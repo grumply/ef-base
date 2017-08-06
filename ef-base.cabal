@@ -56,7 +56,7 @@ library
                        InstanceSigs
   if (impl(ghcjs))
     build-depends:      base >=4.8
-                      , ef-core >= 3
+                      , ef >= 3
                       , random >= 1.1
                       , ghc-prim
                       , mtl
@@ -68,7 +68,7 @@ library
                       , ghcjs-base
   else
     build-depends:      base >=4.8
-                      , ef-core >= 3
+                      , ef >= 3
                       , random >= 1.1
                       , ghc-prim
                       , mtl
