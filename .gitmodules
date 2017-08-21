@@ -1,0 +1,4 @@
+[submodule "deps/ef"]
+	path = deps/ef
+	url = https://github.com/grumply/ef
+	branch = master
