@@ -5,11 +5,11 @@ let
     packageOverrides = pkgs: rec {
       haskell = pkgs.haskell // {
         packages = pkgs.haskell.packages // {
-          extension = new: old: {
-            cabal = pkgs.haskell.packages.cabalNoTest;
-          };
           "${compiler}" = pkgs.haskell.packages."${compiler}".override {
             overrides = new: old: rec {
+
+              ef =
+                new.callPackage ./deps/ef/ef.nix { };
 
               ef-base =
                 new.callPackage ./ef-base.nix { };
@@ -24,6 +24,7 @@ let
   pkgs = import <nixpkgs> { inherit config; };
 
 in
-  { ef-base = pkgs.haskell.packages.${compiler}.ef-base;
+  { ef = pkgs.haskell.packages.${compiler}.ef;
+    ef-base = pkgs.haskell.packages.${compiler}.ef-base;
   }
 

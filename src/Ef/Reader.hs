@@ -57,7 +57,7 @@ asks f = Send (Ask (Return . f))
 {-# INLINE asks #-}
 
 localp :: forall p ms c r. (Monad c, ms <: '[Reader p r]) => Proxy p -> (r -> r) -> Ef ms c r -> Ef ms c r
-localp _ f n = buildn $ \r l d -> foldn r l (msg d) n
+localp _ f n = buildn' $ \r l d -> foldn r l (msg d) n
   where
     msg d m =
       case prj m of

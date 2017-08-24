@@ -83,7 +83,7 @@ putp p = Send . PutP p
 put :: forall st ms c. (Monad c, ms <: '[State () st]) => st -> Ef ms c ()
 put = Send . PutP unit
 
-{-# INLIEN modifyp #-}
+{-# INLINE modifyp #-}
 modifyp :: forall p st ms c a. (Monad c, ms <: '[State p st]) => Proxy p -> (st -> (st,a)) -> Ef ms c (st,a)
 modifyp p f = Send $ ModifyP p f Return
 

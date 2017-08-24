@@ -22,10 +22,10 @@ module Data.Promise
     , forlorn
 
     , complete
-    , fulfill
     , completed
-    , fulfilled
     , onComplete
+    , fulfill
+    , fulfilled
     , onFulfill
 
     , abort
@@ -40,7 +40,6 @@ module Data.Promise
     , onNotify
     , onNotify'
 
-    , completed
     , resolved
 
     , cancelListener

@@ -1,6 +1,6 @@
 module Ef.Base (module Ef.Base,module X) where
 
-import Ef as X
+import Ef as X hiding (observe)
 
 import Ef.Event as X
 import Ef.Except as X
