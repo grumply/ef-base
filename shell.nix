@@ -1,1 +1,1 @@
-(import ./default.nix {}).ef-base
+(import ./default.nix {})
