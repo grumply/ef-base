@@ -76,7 +76,9 @@ executable tests
 executable bench
   main-is:             Bench.hs
   hs-source-dirs:      src bench
-  other-modules:       Data.Promise
+  other-modules:       Bench.Pipes
+                       Bench.State
+                       Data.Promise
                        Data.Queue
                        System.Random.Shuffle
                        Ef.Pipes
@@ -126,6 +128,7 @@ executable bench
                      , free
                      , semigroups
                      , stm
+                     , pipes
   if (impl(ghcjs))
     ghc-options:       -dedupe -O2
   else
