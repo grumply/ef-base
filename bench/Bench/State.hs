@@ -18,11 +18,11 @@ states =
     let o = Object (state (0 :: Int) *:* Empty)
     br0 <- nf "ef/get/put/runWith" (\o -> snd $ runIdentity $ runWith o efGetPut) o
     notep br0
-    br1 <- nf "ef/get/put/runWith'" (\o -> snd $ runIdentity $ runWith' o efGetPut) o
-    notep br1
+    -- br1 <- nf "ef/get/put/runWith'" (\o -> snd $ runIdentity $ runWith' o efGetPut) o
+    -- notep br1
     br2 <- nf "mtl/get/put" (runIdentity . St.evalStateT mtlGetPut) (0 :: Int)
     notep br2
-    report br0 br1
+    report br0 br2
   where
     efGetPut = do
       x :: Int <- get
