@@ -58,6 +58,7 @@ executable tests
   build-depends:       base >=4.8
                      , ef >= 3
                      , trivial
+                     , tlc
                      , random >= 1.1
                      , ghc-prim
                      , mtl
@@ -120,14 +121,15 @@ executable bench
   build-depends:       base >=4.8
                      , ef >= 3
                      , trivial
+                     , tlc
                      , random >= 1.1
                      , ghc-prim
                      , mtl
+                     , stm
                      , transformers
                      , comonad
                      , free
                      , semigroups
-                     , stm
                      , pipes
   if (impl(ghcjs))
     ghc-options:       -dedupe -O2
@@ -177,6 +179,7 @@ library
                        InstanceSigs
   build-depends:       base >=4.8
                      , ef >= 3
+                     , tlc
                      , random >= 1.1
                      , ghc-prim
                      , mtl

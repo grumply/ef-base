@@ -1,5 +1,5 @@
 { mkDerivation, base, comonad, ef, free, ghc-prim, mtl, random
-, semigroups, stdenv, stm, transformers, trivial, pipes
+, semigroups, stdenv, stm, transformers, trivial, pipes, tlc
 }:
 mkDerivation {
   pname = "ef-base";
@@ -9,11 +9,11 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     base comonad ef free ghc-prim mtl random semigroups stm
-    transformers
+    transformers tlc
   ];
   executableHaskellDepends = [
     base comonad ef free ghc-prim mtl random semigroups stm
-    transformers trivial pipes
+    transformers trivial pipes tlc
   ];
   homepage = "github.com/grumply/ef";
   description = "Base ef library including common Ef abstractions";

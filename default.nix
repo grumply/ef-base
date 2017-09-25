@@ -11,6 +11,9 @@ let
               trivial =
                 new.callPackage ./deps/trivial/trivial.nix { };
 
+              tlc =
+                new.callPackage ./deps/tlc/tlc.nix { };
+
               ef =
                 new.callPackage ./deps/ef/ef.nix { };
 
@@ -29,6 +32,7 @@ let
 in
   { ef = pkgs.haskell.packages.${compiler}.ef;
     ef-base = pkgs.haskell.packages.${compiler}.ef-base;
+    tlc = pkgs.haskell.packages.${compiler}.tlc;
     trivial = pkgs.haskell.packages.${compiler}.trivial;
   }
 

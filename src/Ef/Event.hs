@@ -13,6 +13,7 @@ import Data.Promise
 import Control.Concurrent
 import Control.Concurrent.STM
 import Control.Exception
+import Data.Foldable
 import Data.IORef
 import Data.Maybe
 import Unsafe.Coerce
@@ -296,12 +297,13 @@ driver (EvQueue buf) o = do
     start q = go
       where
         go o = do
-          ms <- liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
-          case ms of
-            Nothing -> return ()
-            Just (Ev e s) -> do
-              (o',_) <- o ! signal (unsafeCoerce s) e
-              go o'
+          mes <- liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
+          for_ mes (run o)
+
+        run o [] = go o
+        run o (Ev e s : es) = do
+          (o',_) <- o ! signal (unsafeCoerce s) e
+          run o' es
 
 {-# INLINE driverPrintExceptions #-}
 driverPrintExceptions :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
@@ -313,14 +315,15 @@ driverPrintExceptions e (EvQueue buf) o = do
     start q = go
       where
         go o = do
-          ms <- liftIO $ catch (Just <$> collect q) $ \(se :: SomeException) -> do
-                  putStrLn (e ++ show se)
-                  return Nothing
-          case ms of
-            Nothing -> return ()
-            Just (Ev e s) -> do
-              (o',_) <- o ! signal (unsafeCoerce s) e
-              go o'
+          mes <- liftIO $ catch (Just <$> collect q) $ \(se :: SomeException) -> do
+                   putStrLn (e ++ show se)
+                   return Nothing
+          for_ mes (run o)
+
+        run o [] = go o
+        run o (Ev e s : es) = do
+          (o',_) <- o ! signal (unsafeCoerce s) e
+          run o' es
 
 data As i = As { asQueue :: EvQueue, runAs_ :: forall a. i a -> IO (Promise a) }
 

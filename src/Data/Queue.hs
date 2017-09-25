@@ -1,4 +1,6 @@
-{-# language CPP #-}
+{-# LANGUAGE CPP #-}
+{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TypeOperators, DataKinds #-}
 module Data.Queue
   ( Queue
   , newQueue
@@ -8,19 +10,32 @@ module Data.Queue
 
 import Ef
 
-import Control.Concurrent.STM
-import Control.Concurrent.STM.TQueue
-import Data.Monoid
+import TLC
 
-data Queue a = Queue {-# UNPACK #-} !(TQueue a)
-  deriving Eq
+import Data.IORef
+import Control.Concurrent.MVar
 
+-- Single consumer multiple producer queue.
+-- Hopefully correct for that case, specifically.
+
+data Queue a = Queue
+  { queueBarrier  :: {-# UNPACK #-}!(MVar ())
+  , internalQueue :: {-# UNPACK #-}!(IORef [a])
+  } deriving Eq
+
+{-# INLINE newQueue #-}
 newQueue :: MonadIO c => c (Queue a)
-newQueue = liftIO $ Queue <$> newTQueueIO
+newQueue = liftIO $ Queue <$> newEmptyMVar <*> newIORef []
 
-arrive :: MonadIO c => Queue a -> a -> c ()
-arrive (Queue q) a = liftIO $ atomically $ writeTQueue q a
+{-# INLINE arrive #-}
+arrive :: MonadIO c => Queue a -> a -> c (Bool ::: "Receiver inactive")
+arrive Queue {..} a = liftIO $ do
+  atomicModifyIORef' internalQueue $ \q -> (a:q,())
+  tryPutMVar queueBarrier ()
 
-collect :: MonadIO c => Queue a -> c a
-collect (Queue q) = liftIO $ atomically $ readTQueue q
+{-# INLINE collect #-}
+collect :: MonadIO c => Queue a -> c [a]
+collect Queue {..} = liftIO $ do
+  takeMVar queueBarrier
+  atomicModifyIORef' internalQueue $ \q -> ([],reverse q)
 
