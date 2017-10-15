@@ -192,7 +192,7 @@ fulfill = complete
 completed :: (Monad super, MonadIO super)
           => Process status result -> super Bool
 completed (Process _ _ _ p) = do
-  mres <- liftIO (tryTakeMVar p)
+  mres <- liftIO (tryReadMVar p)
   case mres of
     Just (Right _) -> return True
     _ -> return False
@@ -247,7 +247,7 @@ forsake = abort
 aborted :: (Monad super, MonadIO super)
         => Process status result -> super Bool
 aborted (Process _ _ _ p) = do
-  mres <- liftIO (tryTakeMVar p)
+  mres <- liftIO (tryReadMVar p)
   case mres of
     Just (Left _) -> return True
     _ -> return False
@@ -290,7 +290,7 @@ onComplete :: (Monad super, MonadIO super)
 onComplete pr@(Process _ _ ls_ p) f =
   liftIO $ do
     (ls,r) <- modifyMVar ls_ $ \(n,pls) -> do
-      mres <- tryTakeMVar p
+      mres <- tryReadMVar p
       let f' res =
             case res of
               Complete r -> f r
@@ -318,7 +318,7 @@ onAbort :: (Monad super, MonadIO super)
 onAbort pr@(Process _ _ ls_ p) f =
   liftIO $ do
     (ls,r) <- modifyMVar ls_ $ \(n,pls) -> do
-      mres <- tryTakeMVar p
+      mres <- tryReadMVar p
       let f' res =
             case res of
               Aborted se -> f se
@@ -346,7 +346,7 @@ onNotify :: (Monad super, MonadIO super)
 onNotify pr@(Process _ _ ls_ p) f =
   liftIO $ do
     (ls,r) <- modifyMVar ls_ $ \(n,pls) -> do
-      mres <- tryTakeMVar p
+      mres <- tryReadMVar p
       let f' res =
             case res of
               Notify st -> f st
@@ -356,7 +356,7 @@ onNotify pr@(Process _ _ ls_ p) f =
           let l = (n,f')
               !n' = succ n
           return ((n',l:pls),(return (),ProcessListener pr n))
-        Just r ->
+        Just r -> do
           return ((0,[]),(return (),ProcessListener pr 0))
     ls
     return r
@@ -368,7 +368,7 @@ onNotify' :: (Monad super, MonadIO super)
 onNotify' pr@(Process _ st_ ls_ p) f =
   liftIO $ do
     (ls,r) <- modifyMVar ls_ $ \(n,pls) -> do
-      mres <- tryTakeMVar p
+      mres <- tryReadMVar p
       let f' res =
             case res of
               Notify st -> f st
@@ -384,7 +384,7 @@ onNotify' pr@(Process _ st_ ls_ p) f =
                 ((n',l:pls),(return (),ProcessListener pr n))
               Just st ->
                 ((n',l:pls),(f st,ProcessListener pr n))
-        Just r ->
+        Just r -> do
           return $
             case mst of
               Just st ->

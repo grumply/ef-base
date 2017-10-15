@@ -537,13 +537,13 @@ attach pr cb0 = do
   self <- asSelf
   cb_ <- liftIO $ newMVar cb0
   onComplete pr $ \res -> void $ do
-    Callback {..} <- takeMVar cb_
+    Callback {..} <- readMVar cb_
     runAs self (success res)
   onNotify pr $ \upd -> void $ do
-    Callback {..} <- takeMVar cb_
+    Callback {..} <- readMVar cb_
     runAs self (updates upd)
   onAbort pr $ \exc -> void $ do
-    Callback {..} <- takeMVar cb_
+    Callback {..} <- readMVar cb_
     runAs self (failure exc)
   return (Callback_ cb_)
 

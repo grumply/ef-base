@@ -30,7 +30,7 @@ newQueue = liftIO $ Queue <$> newEmptyMVar <*> newIORef []
 {-# INLINE arrive #-}
 arrive :: MonadIO c => Queue a -> a -> c (Bool ::: "Receiver inactive")
 arrive Queue {..} a = liftIO $ do
-  atomicModifyIORef' internalQueue $ \q -> (a:q,())
+  q <- atomicModifyIORef' internalQueue $ \q -> (a:q,q)
   tryPutMVar queueBarrier ()
 
 {-# INLINE collect #-}
