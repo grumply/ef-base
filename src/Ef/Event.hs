@@ -292,38 +292,42 @@ driver :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
        => EvQueue -> Object ts c -> c ()
 driver (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  start qs o
+  go qs o
   where
-    start q = go
-      where
-        go o = do
-          mes <- liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
-          for_ mes (run o)
-
-        run o [] = go o
-        run o (Ev e s : es) = do
-          (o',_) <- o ! signal (unsafeCoerce s) e
-          run o' es
+    {-# INLINE go #-}
+    go q !o = do
+      mes <- liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
+      case mes of
+        Nothing -> return ()
+        Just es -> do
+          !o' <- foldM (\o (Ev e s) -> do
+                            (!o',_) <- o ! signal (unsafeCoerce s) e
+                            return o'
+                        ) o es
+          go q o'
 
 {-# INLINE driverPrintExceptions #-}
 driverPrintExceptions :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
                       => String -> EvQueue -> Object ts c -> c ()
 driverPrintExceptions e (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  start qs o
+  go qs o
   where
-    start q = go
-      where
-        go o = do
-          mes <- liftIO $ catch (Just <$> collect q) $ \(se :: SomeException) -> do
-                   putStrLn (e ++ show se)
-                   return Nothing
-          for_ mes (run o)
+    {-# INLINE go #-}
+    go q !o = do
+      mes <- liftIO $ catch (Just <$> collect q) $ \(se :: SomeException) -> do
+                putStrLn (e ++ show se)
+                return Nothing
+      case mes of
+        Nothing -> return ()
+        Just es -> do
+          !o' <- foldM (\o (Ev e s) -> do
+                            (!o',_) <- o ! signal (unsafeCoerce s) e
+                            return o'
+                        ) o es
+          go q o'
 
-        run o [] = go o
-        run o (Ev e s : es) = do
-          (o',_) <- o ! signal (unsafeCoerce s) e
-          run o' es
+
 
 data As i = As { asQueue :: EvQueue, runAs_ :: forall a. i a -> IO (Promise a) }
 
