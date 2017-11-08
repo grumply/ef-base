@@ -2,6 +2,7 @@ module Ef.Base (module Ef.Base,module X) where
 
 import Ef as X hiding (observe)
 
+import Ef.Async as X
 import Ef.Event as X
 import Ef.Except as X
 import Ef.Fiber as X

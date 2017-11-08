@@ -19,6 +19,7 @@ executable tests
   other-modules:       Data.Promise
                        Data.Queue
                        System.Random.Shuffle
+                       Ef.Async
                        Ef.Pipes
                        Ef.State
                        Ef.Writer
@@ -67,6 +68,7 @@ executable tests
                      , free
                      , semigroups
                      , stm
+                     , exceptions
   if (impl(ghcjs))
     ghc-options:       -dedupe
   else
@@ -82,6 +84,7 @@ executable bench
                        Data.Promise
                        Data.Queue
                        System.Random.Shuffle
+                       Ef.Async
                        Ef.Pipes
                        Ef.State
                        Ef.Writer
@@ -131,6 +134,7 @@ executable bench
                      , free
                      , semigroups
                      , pipes
+                     , exceptions
   if (impl(ghcjs))
     ghc-options:       -dedupe -O2
   else
@@ -141,6 +145,7 @@ library
   exposed-modules:     Data.Promise
                        Data.Queue
                        System.Random.Shuffle
+                       Ef.Async
                        Ef.Pipes
                        Ef.State
                        Ef.Writer
@@ -188,5 +193,6 @@ library
                      , free
                      , semigroups
                      , stm
+                     , exceptions
   hs-source-dirs:      src
   default-language:    Haskell2010
