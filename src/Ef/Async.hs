@@ -15,20 +15,19 @@ import Control.Monad.Catch
 import Control.Monad.Fail
 import Control.Monad.Trans
 
-newtype Async i ms c a = Async { runAsync :: ms <: '[Evented] => Ef ms c (Process i a) }
+newtype Async ms c a = Async { runAsync :: ms <: '[Evented] => Ef ms c (Promise a) }
 
-instance MonadIO c => Functor (Async i ms c) where
+instance MonadIO c => Functor (Async ms c) where
   fmap f efpr = Async $ do
     pra <- runAsync efpr
     prb <- process
     _   <- attach pra Callback
             { success = void . complete prb . f
-            , updates = void . notify prb
             , failure = void . abort prb
             }
     return prb
 
-instance (MonadIO c, Functor (Messages ms)) => Applicative (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => Applicative (Async ms c) where
   pure a = Async $ do
     p <- process
     void $ complete p a
@@ -42,22 +41,20 @@ instance (MonadIO c, Functor (Messages ms)) => Applicative (Async i ms c) where
                 pa <- runAsync fa
                 void $ attach pa Callback
                   { success = void . complete pb . ab
-                  , updates = void . notify pb
                   , failure = void . abort pb
                   }
-            , updates = void . notify pb
             , failure = void . abort pb
             }
     return pb
 
-instance (MonadIO c, Functor (Messages ms)) => MonadIO (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => MonadIO (Async ms c) where
   liftIO ioa = Async $ do
     pr <- process
     a  <- liftIO ioa
     void $ complete pr a
     return pr
 
-instance (MonadIO c, Functor (Messages ms)) => Monad (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => Monad (Async ms c) where
   return = pure
   ma >>= amb = Async $ do
     pr <- process
@@ -67,10 +64,8 @@ instance (MonadIO c, Functor (Messages ms)) => Monad (Async i ms c) where
                 pb <- runAsync (amb a)
                 void $ attach pb Callback
                   { success = void . complete pr
-                  , updates = void . notify pr
                   , failure = void . abort pr
                   }
-            , updates = void . notify pr
             , failure = void . abort pr
             }
     return pr
@@ -83,7 +78,7 @@ data AsyncFail = AsyncFail String
   deriving Show
 instance Exception AsyncFail
 
-instance (MonadIO c, Functor (Messages ms)) => MonadFail (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => MonadFail (Async ms c) where
   fail str = Async $ do
     p <- process
     abort p (AsyncFail str)
@@ -109,7 +104,7 @@ instance Exception AsyncFails
 -- prettyAsyncFails :: Forest (Either SomeException AsyncFail) -> String
 -- prettyAsyncFails = drawForest . fmap (fmap show)
 
-instance (MonadIO c, Functor (Messages ms)) => Alternative (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => Alternative (Async ms c) where
   empty = Async $ do
     p <- process
     abort p (AsyncFail "empty")
@@ -120,42 +115,37 @@ instance (MonadIO c, Functor (Messages ms)) => Alternative (Async i ms c) where
     pr      <- runAsync fr
     attach pl Callback
       { success = void . complete unified
-      , updates = void . notify unified
       , failure = \fl -> do
           void $ attach pr Callback
             { success = \_ -> return ()
-            , updates = \_ -> return ()
             , failure = \fr -> void $ abort unified $ AsyncFails [fl,fr]
             }
       }
     attach pr Callback
       { success = void . complete unified
-      , updates = void . notify unified
       , failure = \fr -> do
           void $ attach pl Callback
             { success = \_ -> return ()
-            , updates = \_ -> return ()
             , failure = \fl -> void $ abort unified $ AsyncFails [fl,fr]
             }
       }
     return unified
 
-instance (MonadIO c, Functor (Messages ms)) => MonadPlus (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => MonadPlus (Async ms c) where
   mzero = empty
   mplus = (<|>)
 
-instance (MonadIO c, Functor (Messages ms)) => MonadThrow (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => MonadThrow (Async ms c) where
   throwM e = Async $ do
     p <- process
     abort p e
     return p
 
-instance (MonadIO c, Functor (Messages ms)) => MonadCatch (Async i ms c) where
+instance (MonadIO c, Functor (Messages ms)) => MonadCatch (Async ms c) where
   catch ma h = Async $ do
     p <- runAsync ma
     attach p Callback
       { success = \_ -> return ()
-      , updates = \_ -> return ()
       , failure = \se ->
           case fromException se of
             Nothing -> return ()
@@ -163,12 +153,9 @@ instance (MonadIO c, Functor (Messages ms)) => MonadCatch (Async i ms c) where
       }
     return p
 
-liftAsync :: (MonadIO c, Functor (Messages ms)) => Ef ms c a -> Async i ms c a
+liftAsync :: (MonadIO c, Functor (Messages ms)) => Ef ms c a -> Async ms c a
 liftAsync ef = Async $ do
   a <- ef
   p <- process
   complete p a
   return p
-
-liftAsyncIO :: (MonadIO c, Functor (Messages ms)) => IO a -> Async i ms c a
-liftAsyncIO = liftAsync . liftIO
