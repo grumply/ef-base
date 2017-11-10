@@ -47,13 +47,13 @@ data Signal' (c :: * -> *) (e :: *)
         {-# UNPACK #-} !(TMVar [Behavior' c e])
     deriving Eq
 
-{-# INLINE construct_ #-}
-construct_ :: STM (Signal' c e)
-construct_ = Signal <$> newTMVar []
+{-# INLINE makeSignal_ #-}
+makeSignal_ :: STM (Signal' c e)
+makeSignal_ = Signal <$> newTMVar []
 
-{-# INLINE construct #-}
-construct :: MonadIO m => m (Signal' c e)
-construct = liftIO (Signal <$> newTMVarIO [])
+{-# INLINE makeSignal #-}
+makeSignal :: MonadIO m => m (Signal' c e)
+makeSignal = liftIO (Signal <$> newTMVarIO [])
 
 {-# INLINE behaviorCount #-}
 behaviorCount :: (MonadIO c')
@@ -74,7 +74,7 @@ nullSignal (Signal bs_) = do
 {-# INLINE runner #-}
 runner :: forall c c'. (MonadIO c, Monad c') => c (Signal' c' (c' ()),Behavior' c' (c' ()))
 runner = liftIO $ atomically $ do
-  sig <- construct_
+  sig <- makeSignal_
   b   <- behavior_ sig lift
   return (sig,b)
 
@@ -111,7 +111,7 @@ mergeS :: ( MonadIO c
              , Behavior' c e
              )
 mergeS sig0 sig1 = liftIO $ atomically $ do
-  sig <- construct_
+  sig <- makeSignal_
   bt0 <- behavior_ sig0 $ lift . signal sig
   bt1 <- behavior_ sig1 $ lift . signal sig
   return (sig,bt0,bt1)
@@ -140,7 +140,7 @@ zipWithS :: ( MonadIO c
                , Behavior' c e'
                )
 zipWithS f sig0@(Signal bs0) sig1@(Signal bs1) = liftIO $ atomically $ do
-  sig <- construct_
+  sig <- makeSignal_
   c0 <- newTVar Nothing
   c1 <- newTVar Nothing
   bt0 <- behavior_ sig0 $ \e0 -> do
@@ -165,7 +165,7 @@ mapS :: ( MonadIO c
            , Behavior' c e
            )
 mapS sig f = liftIO $ atomically $ do
-  sig' <- construct_
+  sig' <- makeSignal_
   bt   <- behavior_ sig $ \e -> lift $ do
             e' <- f e
             signal sig' e'
@@ -183,7 +183,7 @@ map2S :: ( MonadIO c
             , Behavior' c e1
             )
 map2S sig0 sig1 f = liftIO $ atomically $ do
-  sig <- construct_
+  sig <- makeSignal_
   bt0 <- behavior_ sig0 $ \e0 -> lift $ do
            e0' <- f $ Left e0
            signal sig e0'
@@ -202,7 +202,7 @@ filterS :: ( MonadIO c
               , Behavior' c e
               )
 filterS sig f = liftIO $ atomically $ do
-  sig' <- construct_
+  sig' <- makeSignal_
   bt   <- behavior_ sig $ \e -> lift $ do
             me' <- f e
             forM_ me' (signal sig')
@@ -220,7 +220,7 @@ filter2S :: ( MonadIO c
                , Behavior' c e1
                )
 filter2S sig0 sig1 f = liftIO $ atomically $ do
-  sig <- construct_
+  sig <- makeSignal_
   bt0 <- behavior_ sig0 $ \e -> lift $ do
            me' <- f $ Left e
            forM_ me' (signal sig)
@@ -273,7 +273,7 @@ trigger :: (MonadIO c) => Behavior' c e -> e -> c ()
 trigger b e = void $ signal_ [b] e
 
 -- Directly, the following types looks inherently unsafe. Technically, they are.
--- Extension of this interface to protect the construction of these types prevents
+-- Extension of this interface to protect the makeSignalion of these types prevents
 -- unsafe usage.
 
 data Ev where Ev :: e -> {-# UNPACK #-} !(Signal' c e) -> Ev
@@ -334,22 +334,22 @@ data As i = As { asQueue :: EvQueue, runAs_ :: forall a. i a -> IO (Promise a) }
 runAs :: MonadIO c => As i -> i a -> c (Promise a)
 runAs a i = liftIO (runAs_ a i)
 
-{-# INLINE unsafeConstructAs #-}
-unsafeConstructAs :: forall c i. (MonadIO c, MonadIO i) => EvQueue -> c (As i)
-unsafeConstructAs buf = do
+{-# INLINE unsafeMakeSignalAs #-}
+unsafeMakeSignalAs :: forall c i. (MonadIO c, MonadIO i) => EvQueue -> c (As i)
+unsafeMakeSignalAs buf = do
   (sig,_) <- runner
   return $ As buf $ \i -> do
     p <- promise
     buffer buf sig $ i >>= void . fulfill p
     return p
 
--- Use this to create safer As constructors. For evented contexts that hold
+-- Use this to create safer As makeSignalors. For evented contexts that hold
 -- their internal event buffer, EvQueue, in state, this would be used as:
 --
--- > asSelf <- constructAs get
-{-# INLINE constructAs #-}
-constructAs :: MonadIO c => c EvQueue -> c (As c)
-constructAs g = unsafeConstructAs =<< g
+-- > asSelf <- makeSignalAs get
+{-# INLINE makeSignalAs #-}
+makeSignalAs :: MonadIO c => c EvQueue -> c (As c)
+makeSignalAs g = unsafeMakeSignalAs =<< g
 
 -- Not for external use.
 {-# INLINE buffer #-}
@@ -430,7 +430,7 @@ publish (Syndicate nw) ev = do
 subscribe :: (MonadIO c) => Syndicate e -> c EvQueue -> c (Subscription c' e)
 subscribe synd cevq = do
   evq <- cevq
-  sig <- construct
+  sig <- makeSignal
   sub <- subscription evq sig
   joinSyndicate synd sub
   return sub
@@ -495,7 +495,7 @@ schedule = delay 0
 
 {-# INLINE asSelf #-}
 asSelf :: (MonadIO c, ms <: '[Evented]) => Ef ms c (As (Ef ms c))
-asSelf = constructAs get
+asSelf = makeSignalAs get
 
 data Callback status result c = Callback_ (MVar (Callback_ status result c))
 data Callback_ status result c = Callback
@@ -520,7 +520,7 @@ modifyCallback (Callback_ cb_) f = do
 done :: MonadIO c' => Callback status result c -> c' Bool
 done (Callback_ cb) = liftIO $ isEmptyMVar cb
 
--- | withCallback is a primitive for constructing truly asynchronous processes.
+-- | withCallback is a primitive for makeSignaling truly asynchronous processes.
 -- Alone, `withCallback` is not especially useful. When extended to
 -- cross-context execution, it becomes more useful.
 withCallback :: (MonadIO c, ms <: '[Evented])
@@ -560,7 +560,7 @@ attach pr cb0 = do
 --   cont <- liftIO $ newIORef True
 --   buf <- get
 --   (sig,bhv) <- liftIO $ atomically $ do
---     sig <- construct
+--     sig <- makeSignal
 --     bhv <- behavior sig (lift . f)
 --     return (sig,bhv)
 --   pl <- onComplete p $ \a -> do
@@ -577,7 +577,7 @@ attach pr cb0 = do
 --   cont <- liftIO $ newIORef True
 --   buf <- get
 --   (sig,bhv) <- liftIO $ atomically $ do
---     sig <- construct
+--     sig <- makeSignal
 --     bhv <- behavior sig (lift . f)
 --     return (sig,bhv)
 --   pl <- onAbort p $ \a -> do
@@ -594,7 +594,7 @@ attach pr cb0 = do
 --   cont <- liftIO $ newIORef True
 --   buf <- get
 --   (sig,bhv) <- liftIO $ atomically $ do
---     sig <- construct
+--     sig <- makeSignal
 --     bhv <- behavior sig (lift . f)
 --     return (sig,bhv)
 --   pl <- onNotify p $ \a -> do
@@ -611,7 +611,7 @@ attach pr cb0 = do
 --   cont <- liftIO $ newIORef True
 --   buf <- get
 --   (sig,bhv) <- liftIO $ atomically $ do
---     sig <- construct
+--     sig <- makeSignal
 --     bhv <- behavior sig (lift . f)
 --     return (sig,bhv)
 --   pl <- onNotify' p $ \a -> do
