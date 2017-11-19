@@ -160,8 +160,8 @@ liftAsync ef = Async $ do
   complete p a
   return p
 
-withPromise :: (MonadIO c, Functor (Messages ms)) => (Promise a -> Ef ms c ()) -> Async ms c a
-withPromise f = Async $ do
+withPromise :: (MonadIO c) => (Promise a -> c ()) -> c (Promise a)
+withPromise f = do
   p <- process
   f p
   return p

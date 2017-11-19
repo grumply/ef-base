@@ -5,7 +5,7 @@ import Trivial
 import Ef.Base
 
 main = do
-    void $ construct ((state (0 :: Int)) *:* state (0 :: Integer) *:* Empty) ! do
+    void $ Object ((state (0 :: Int)) *:* state (0 :: Integer) *:* Empty) ! do
       i :: Int <- get
       i' :: Integer <- get
       put (i + 1)

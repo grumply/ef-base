@@ -16,7 +16,7 @@ suite = scope "state" $ tests
 
 states =
   scope "state" $ do
-    let !o = construct $ (state (0 :: Int)) *:* Empty
+    let !o = Object $ (state (0 :: Int)) *:* Empty
     br0 <- nf "ef/get/put/runWith" (\o -> snd $ runIdentity $ runWith o efGetPut) o
     notep br0
     -- br1 <- nf "ef/get/put/runWith'" (\o -> snd $ runIdentity $ runWith' o efGetPut) o
