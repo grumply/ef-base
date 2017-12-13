@@ -153,6 +153,9 @@ instance (MonadIO c, Functor (Messages ms)) => MonadCatch (Async ms c) where
       }
     return p
 
+sync :: (MonadIO c, ms <: '[Evented]) => Async ms c a -> Ef ms c (Maybe a)
+sync = runAsync >=> demandMaybe
+
 liftAsync :: (MonadIO c, Functor (Messages ms)) => Ef ms c a -> Async ms c a
 liftAsync ef = Async $ do
   a <- ef
