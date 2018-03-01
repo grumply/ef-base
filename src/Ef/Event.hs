@@ -288,25 +288,13 @@ newEvQueue = EvQueue <$> liftIO (newIORef . Just =<< newQueue)
 data DriverStopped = DriverStopped deriving Show
 instance Exception DriverStopped
 
--- from monad-loops: Control.Monad.Loops.whileJust_
-{-# SPECIALIZE whileJust_ :: IO (Maybe a) -> (a -> IO b) -> IO () #-}
-whileJust_ :: (Monad m) => m (Maybe a) -> (a -> m b) -> m ()
-whileJust_ p f = go
-    where go = do
-            x <- p
-            case x of
-                Nothing -> return ()
-                Just x  -> do
-                        f x
-                        go
-
 driver :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
        => EvQueue -> Object ts c -> c ()
 driver (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
   _o <- liftIO $ newIORef o
-  let read = liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect qs)
-  whileJust_ read $ \es -> do
+  forever $ do
+    es <- liftIO $ collect qs
     o  <- liftIO $ readIORef _o
     !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
     liftIO $ writeIORef _o o'
@@ -316,8 +304,8 @@ driverPrintExceptions :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms)
 driverPrintExceptions e (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
   _o <- liftIO $ newIORef o
-  let read = liftIO $ handle (\(se :: SomeException) -> putStrLn (e ++ show se) >> return Nothing) (Just <$> collect qs)
-  whileJust_ read $ \es -> do
+  forever $ do
+    es <- liftIO $ handle (\(se :: SomeException) -> putStrLn (e ++ show se) >> throw se) (collect qs)
     o  <- liftIO $ readIORef _o
     !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
     liftIO $ writeIORef _o o'
