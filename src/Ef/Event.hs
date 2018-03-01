@@ -287,47 +287,41 @@ newEvQueue = EvQueue <$> liftIO (newIORef . Just =<< newQueue)
 data DriverStopped = DriverStopped deriving Show
 instance Exception DriverStopped
 
-{-# INLINE driver #-}
+{-# SPECIALIZE whileJust_ :: IO (Maybe a) -> (a -> IO b) -> IO () #-}
+-- from monad-loops: Control.Monad.Loops.whileJust_
+whileJust_ :: (Monad m) => m (Maybe a) -> (a -> m b) -> m ()
+whileJust_ p f = go
+    where go = do
+            x <- p
+            case x of
+                Nothing -> return ()
+                Just x  -> do
+                        f x
+                        go
+
+{-# SPECIALIZE driver :: EvQueue -> Object ts IO -> IO () #-}
 driver :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
        => EvQueue -> Object ts c -> c ()
 driver (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  go qs o
-  where
-    {-# INLINE go #-}
-    go q !o = do
-      mes <- liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
-      case mes of
-        Nothing -> return ()
-        Just es -> do
-          !o' <- foldM (\o (Ev e s) -> do
-                            (!o',_) <- o ! signal (unsafeCoerce s) e
-                            return o'
-                        ) o es
-          go q o'
+  _o <- newIORef o
+  let read = liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
+  whileJust_ read $ \es -> do
+    o  <- readIORef _o
+    !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
+    writeIORef _o o'
 
-{-# INLINE driverPrintExceptions #-}
+{-# SPECIALIZE driverPrintExceptions :: String -> EvQueue -> Object ts IO -> IO () #-}
 driverPrintExceptions :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
                       => String -> EvQueue -> Object ts c -> c ()
 driverPrintExceptions e (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  go qs o
-  where
-    {-# INLINE go #-}
-    go q !o = do
-      mes <- liftIO $ catch (Just <$> collect q) $ \(se :: SomeException) -> do
-                putStrLn (e ++ show se)
-                return Nothing
-      case mes of
-        Nothing -> return ()
-        Just es -> do
-          !o' <- foldM (\o (Ev e s) -> do
-                            (!o',_) <- o ! signal (unsafeCoerce s) e
-                            return o'
-                        ) o es
-          go q o'
-
-
+  _o <- newIORef o
+  let read = liftIO $ handle (\(_ :: SomeException) -> putStrLn (e ++ show se) >> return Nothing) (Just <$> collect q)
+  whileJust_ read $ \es -> do
+    o  <- readIORef _o
+    !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
+    writeIORef _o o'
 
 data As i = As { asQueue :: EvQueue, runAs_ :: forall a. i a -> IO (Promise a) }
 
