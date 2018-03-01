@@ -1,6 +1,7 @@
 {-# language BangPatterns #-}
 {-# language CPP #-}
 {-# language FunctionalDependencies #-}
+{-# OPTIONS_GHC -fno-state-hack -fno-full-laziness #-}
 module Ef.Event where
 
 import Ef
