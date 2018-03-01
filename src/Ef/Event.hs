@@ -303,23 +303,23 @@ driver :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
        => EvQueue -> Object ts c -> c ()
 driver (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  _o <- newIORef o
+  _o <- liftIO $ newIORef o
   let read = liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect qs)
   whileJust_ read $ \es -> do
-    o  <- readIORef _o
+    o  <- liftIO $ readIORef _o
     !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
-    writeIORef _o o'
+    liftIO $ writeIORef _o o'
 
 driverPrintExceptions :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
                       => String -> EvQueue -> Object ts c -> c ()
 driverPrintExceptions e (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  _o <- newIORef o
+  _o <- liftIO $ newIORef o
   let read = liftIO $ handle (\(se :: SomeException) -> putStrLn (e ++ show se) >> return Nothing) (Just <$> collect qs)
   whileJust_ read $ \es -> do
-    o  <- readIORef _o
+    o  <- liftIO $ readIORef _o
     !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
-    writeIORef _o o'
+    liftIO $ writeIORef _o o'
 
 data As i = As { asQueue :: EvQueue, runAs_ :: forall a. i a -> IO (Promise a) }
 
