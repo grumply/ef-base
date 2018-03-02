@@ -287,27 +287,45 @@ newEvQueue = EvQueue <$> liftIO (newIORef . Just =<< newQueue)
 data DriverStopped = DriverStopped deriving Show
 instance Exception DriverStopped
 
+{-# INLINE driver #-}
 driver :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
        => EvQueue -> Object ts c -> c ()
 driver (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  _o <- liftIO $ newIORef o
-  forever $ do
-    es <- liftIO $ collect qs
-    o  <- liftIO $ readIORef _o
-    !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
-    liftIO $ writeIORef _o o'
+  go qs o
+  where
+    {-# INLINE go #-}
+    go q !o = do
+      mes <- liftIO $ handle (\(_ :: SomeException) -> return Nothing) (Just <$> collect q)
+      case mes of
+        Nothing -> return ()
+        Just es -> do
+          !o' <- foldM (\o (Ev e s) -> do
+                            (!o',_) <- o ! signal (unsafeCoerce s) e
+                            return o'
+                        ) o es
+          go q o'
 
+{-# INLINE driverPrintExceptions #-}
 driverPrintExceptions :: (MonadIO c, ms <: '[], Delta (Modules ts) (Messages ms))
                       => String -> EvQueue -> Object ts c -> c ()
 driverPrintExceptions e (EvQueue buf) o = do
   Just qs <- liftIO $ readIORef buf
-  _o <- liftIO $ newIORef o
-  forever $ do
-    es <- liftIO $ handle (\(se :: SomeException) -> putStrLn (e ++ show se) >> throw se) (collect qs)
-    o  <- liftIO $ readIORef _o
-    !o' <- foldM (\o (Ev e s) -> fst <$> (o ! signal (unsafeCoerce s) e)) o es
-    liftIO $ writeIORef _o o'
+  go qs o
+  where
+    {-# INLINE go #-}
+    go q !o = do
+      mes <- liftIO $ catch (Just <$> collect q) $ \(se :: SomeException) -> do
+                putStrLn (e ++ show se)
+                return Nothing
+      case mes of
+        Nothing -> return ()
+        Just es -> do
+          !o' <- foldM (\o (Ev e s) -> do
+                            (!o',_) <- o ! signal (unsafeCoerce s) e
+                            return o'
+                        ) o es
+          go q o'
 
 data As i = As { asQueue :: EvQueue, runAs_ :: forall a. i a -> IO (Promise a) }
 
