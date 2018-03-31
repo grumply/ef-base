@@ -36,9 +36,9 @@ instance (MonadIO c, Functor (Messages ms)) => Applicative (Async ms c) where
   fab <*> fa = Async $ do
     pb  <- process
     pab <- runAsync fab
+    pa  <- runAsync fa
     _   <- attach pab Callback
             { success = \ab -> do
-                pa <- runAsync fa
                 void $ attach pa Callback
                   { success = void . complete pb . ab
                   , failure = void . abort pb
